@@ -3,7 +3,13 @@ var app = express();
 var server = require('http').createServer(app);
 var io = require('socket.io')(server);
 var socketioJwt = require('socketio-jwt');
-require('dotenv').config({ path: '.env' });
+require('dotenv').config({
+    path: '.env'
+});
+
+const EVENT_CHANGE_DEVICE_STATE = "change_device_state";
+const EVENT_GET_STATUS = "get_status";
+const EVENT_DEVICE_STATE = "device_state";
 
 // Let express show auth.html to client
 app.use(express.static(__dirname + '/static'));
@@ -28,16 +34,19 @@ io.on('connection', socketioJwt.authorize({
 }));
 // When authenticated, send back name + email over socket
 io.on('authenticated', function (socket) {
-     console.log(socket.decoded_token);
+    console.log(socket.decoded_token);
     getRole(socket);
     socket.emit('info', socket.decoded_token);
 });
 
 function getRole(socket) {
     switch (socket.decoded_token.guard.toLowerCase()) {
-        case "partner": return new partner(socket);
-        case "device": return new device(socket);
-        case "user": return new user(socket);
+        case "partner":
+            return new partner(socket);
+        case "device":
+            return new device(socket);
+        case "user":
+            return new user(socket);
     }
 }
 
@@ -50,8 +59,13 @@ function partner(socket) {
     io.to("partner_room_" + socket.decoded_token.id)
         .emit("device_list", getAvailableDevices(socket.decoded_token.stores, devices));
 
-    this._socket.on("change_device_state", function (data) {
+    this._socket.on(EVENT_CHANGE_DEVICE_STATE, function (data) {
         io.sockets.emit("change_device_" + data.device_id + "_state", data.data);
+    });
+
+    this._socket.on(EVENT_GET_STATUS, function (data) {
+        data = data.data;
+        io.sockets.emit("get_status_" + data.device_id, "");
     });
 }
 
@@ -71,7 +85,7 @@ function device(socket) {
 
     this._socket.join("store_room_" + socket.decoded_token.store_id);
 
-    this._socket.on("device_state", function (data) {
+    this._socket.on(EVENT_DEVICE_STATE, function (data) {
         var preData = typeof data.data == 'undefined' ? data : data.data;
         var a = preData.indexOf('*');
         var dataJson;
