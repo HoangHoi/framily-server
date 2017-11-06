@@ -67,6 +67,11 @@ function partner(socket) {
         data = data.data;
         io.sockets.emit("get_status_" + data.device_id, "");
     });
+
+    this._socket.on("get_device_state", function(data){
+        console.log(data);
+        io.sockets.emit("get_"+ data + "_state","");
+    });
 }
 
 function device(socket) {
