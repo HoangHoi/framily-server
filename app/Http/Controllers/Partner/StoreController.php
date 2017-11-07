@@ -72,7 +72,7 @@ class StoreController extends BaseController implements StoreManageContract
         return ManageResponse::response(
             'success',
             trans('response.list_success', ['name' => trans('name.store')]),
-            $store->load(['vegetables'])->toArray()
+            $store->load(['vegetables.images'])->toArray()
         );
     }
 
@@ -173,7 +173,7 @@ class StoreController extends BaseController implements StoreManageContract
     protected function getOrderWithStatus(Store $store, $status)
     {
         $vegetableInStore = $store->vegetablesInStore()->get()->pluck('id');
-        return Order::where('status', $status)
+        $orders = Order::where('status', $status)
             ->whereExists(function ($qr) use ($vegetableInStore) {
                 $qr->from('order_items')
                     ->whereIn('vegetable_in_store_id', $vegetableInStore)
@@ -181,6 +181,14 @@ class StoreController extends BaseController implements StoreManageContract
             })
             ->with('items.vegetablesInStore.vegetable.images')
             ->get();
+        Order::where('status', $status)
+            ->whereExists(function ($qr) use ($vegetableInStore) {
+                $qr->from('order_items')
+                    ->whereIn('vegetable_in_store_id', $vegetableInStore)
+                    ->whereRaw('orders.id = order_items.order_id');
+            })
+            ->update('status', Order::ORDER_COMPLETED);
+        return $orders;
     }
 
     protected function getOrderItems(array $vegetablesInStore)
