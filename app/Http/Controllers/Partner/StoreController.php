@@ -179,7 +179,7 @@ class StoreController extends BaseController implements StoreManageContract
                     ->whereIn('vegetable_in_store_id', $vegetableInStore)
                     ->whereRaw('orders.id = order_items.order_id');
             })
-            ->with('items.vegetablesInStore.vegetable.images')
+            ->with('items.vegetablesInStore.vegetable.images', 'user')
             ->get();
         Order::where('status', $status)
             ->whereExists(function ($qr) use ($vegetableInStore) {
