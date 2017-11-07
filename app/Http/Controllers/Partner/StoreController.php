@@ -187,7 +187,7 @@ class StoreController extends BaseController implements StoreManageContract
                     ->whereIn('vegetable_in_store_id', $vegetableInStore)
                     ->whereRaw('orders.id = order_items.order_id');
             })
-            ->update('status', Order::ORDER_COMPLETED);
+            ->update(['status', Order::ORDER_COMPLETED]);
         return $orders;
     }
 
