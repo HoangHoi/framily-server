@@ -144,6 +144,7 @@ Route::group(['namespace' => 'Partner', 'prefix' => 'partner'], function () {
                 Route::post('status', 'TrunkController@updateTrunksStatus');
             });
             Route::group(['prefix' => 'orders'], function () {
+                Route::get('active', 'StoreController@getActiveOrders');
                 Route::group(['prefix' => '{date}'], function () {
                     Route::get('month', 'StoreController@getMonthlyOrders');
                     Route::get('week', 'StoreController@getWeeklyOrders');

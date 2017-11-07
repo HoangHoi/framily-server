@@ -97,6 +97,15 @@ class StoreController extends BaseController implements StoreManageContract
         );
     }
 
+    public function getActiveOrders(Store $store)
+    {
+        return ManageResponse::response(
+            'success',
+            trans('response.list_success', ['name' => trans('name.order')]),
+            ['data' => $this->getOrderWithStatus($store, Order::ORDER_PROCESSING)->toArray()]
+        );
+    }
+
     public function getMonthlyOrders(Store $store, $date, Request $request)
     {
         if ($request->user()->id !== $store->partner_id) {
@@ -159,6 +168,18 @@ class StoreController extends BaseController implements StoreManageContract
             trans('response.list_success', ['name' => trans('name.order')]),
             ['data' => $dataResult->toArray()]
         );
+    }
+
+    protected function getOrderWithStatus(Store $store, $status)
+    {
+        $vegetableInStore = $store->vegetablesInStore()->get()->pluck('id');
+        return Order::where('status', $status)
+            ->whereExists(function ($qr) use ($vegetableInStore) {
+                $qr->from('order_items')
+                    ->whereIn('vegetable_in_store_id', $vegetableInStore)
+                    ->whereRaw('orders.id = order_items.order_id');
+            })
+            ->get();
     }
 
     protected function getOrderItems(array $vegetablesInStore)
