@@ -179,6 +179,7 @@ class StoreController extends BaseController implements StoreManageContract
                     ->whereIn('vegetable_in_store_id', $vegetableInStore)
                     ->whereRaw('orders.id = order_items.order_id');
             })
+            ->with('items.vegetablesInStore.vegetable.images')
             ->get();
     }
 
