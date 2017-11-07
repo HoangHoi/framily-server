@@ -3,13 +3,14 @@ var app = express();
 var server = require('http').createServer(app);
 var io = require('socket.io')(server);
 var socketioJwt = require('socketio-jwt');
-require('dotenv').config({
-    path: '.env'
-});
+require('dotenv').config({ path: '.env' });
 
-const EVENT_CHANGE_DEVICE_STATE = "change_device_state";
-const EVENT_GET_STATUS = "get_status";
-const EVENT_DEVICE_STATE = "device_state";
+var temp="";
+var humid="";
+var ec="";
+var lux="";
+var ph="";
+var cnt=0;
 
 // Let express show auth.html to client
 app.use(express.static(__dirname + '/static'));
@@ -34,19 +35,16 @@ io.on('connection', socketioJwt.authorize({
 }));
 // When authenticated, send back name + email over socket
 io.on('authenticated', function (socket) {
-    console.log(socket.decoded_token);
+     console.log(socket.decoded_token);
     getRole(socket);
     socket.emit('info', socket.decoded_token);
 });
 
 function getRole(socket) {
     switch (socket.decoded_token.guard.toLowerCase()) {
-        case "partner":
-            return new partner(socket);
-        case "device":
-            return new device(socket);
-        case "user":
-            return new user(socket);
+        case "partner": return new partner(socket);
+        case "device": return new device(socket);
+        case "user": return new user(socket);
     }
 }
 
@@ -59,13 +57,11 @@ function partner(socket) {
     io.to("partner_room_" + socket.decoded_token.id)
         .emit("device_list", getAvailableDevices(socket.decoded_token.stores, devices));
 
-    this._socket.on(EVENT_CHANGE_DEVICE_STATE, function (data) {
+    this._socket.on("change_device_state", function (data) {
+        //data nhận từ partner sau đó emit sang device
+        console.log("Từ partner nè:");
+        console.log(data.data);
         io.sockets.emit("change_device_" + data.device_id + "_state", data.data);
-    });
-
-    this._socket.on(EVENT_GET_STATUS, function (data) {
-        data = data.data;
-        io.sockets.emit("get_status_" + data.device_id, "");
     });
 
     this._socket.on("get_device_state", function(data){
@@ -90,28 +86,116 @@ function device(socket) {
 
     this._socket.join("store_room_" + socket.decoded_token.store_id);
 
-    this._socket.on(EVENT_DEVICE_STATE, function (data) {
-        var preData = typeof data.data == 'undefined' ? data : data.data;
-        var a = preData.indexOf('*');
-        var dataJson;
-        var dataEmit;
-        console.log(preData, a);
-        if (a!=-1 && preData.indexOf('*', a + 1)!=-1) {
-            console.log('****');
-            preData = preData.replace(/\*/g, '"');
-            try {
-                dataJson = JSON.parse('{' + preData + '}');
-                dataEmit = dataJson;
-                console.log('data parse');
-                console.log(dataJson);
-            } catch(err) {
-                dataEmit = preData;
-                console.log(err);
+    this._socket.on("device_state", function (data) {
+        //data nhận từ device sau đó emit sang partner
+        var index = data.data;
+        var check = false;
+        if(index.length < 10) {
+            check = true;
+        } else {
+            check = false
+        }
+        if(check){
+            var dataJson;
+            var dataEmit;
+            if(index.charAt(0)=='1'){
+                cnt++;
+                temp="";
+                for(var i=2; i<=index.length; i++){
+                    temp += index.charAt(i);
+                }
+            } else if(index.charAt(0)== '2'){
+                cnt++;
+                humid="";
+                for(var i=2; i<=index.length; i++){
+                    humid += index.charAt(i);
+                }
+            } else if(index.charAt(0)== '3'){
+                cnt++;
+                ec="";
+                for(var i=2; i<=index.length; i++){
+                    ec += index.charAt(i);
+                }
+            } else if(index.charAt(0)== '4'){
+                cnt++;
+                lux="";
+                for(var i=2; i<=index.length; i++){
+                    lux += index.charAt(i);
+                }
+            } else if(index.charAt(0)== '5'){
+                cnt++;
+                ph="";
+                for(var i=2; i<=index.length; i++){
+                    ph += index.charAt(i);
+                }
+            }
+            if(cnt%5==0){
+
+                var emitString = "";
+                emitString += "*TEMPERATURE*: *";
+                emitString += temp;
+                emitString += "*, *HUMIDITY*: *";
+                emitString += humid;
+                emitString += "*, *EC*: *";
+                emitString += ec;
+                emitString += "*, *LUX*: *";
+                emitString += lux;
+                emitString += "*, *pH*: *";
+                emitString += ph;
+                emitString += "*"
+                console.log(emitString);
+                console.log("cnt nè: "+cnt)
+                var emitData  = "";
+                emitData += "{";
+                for(var i=0; i<=emitString.length; i++){
+
+                    if(emitString.charAt(i)=='*'){
+                        emitData += '"';
+                    } else {
+                        emitData += emitString.charAt(i);
+                    }
+
+                }
+                emitData += "}";
+                console.log(emitData);
+
+                try {
+                    dataJson = JSON.parse(emitData);
+                    dataEmit = dataJson;
+                    console.log('data parse');
+                    console.log(dataJson);
+                } catch(err) {
+                    console.log(err);
+                }
+                io.sockets.emit("device_" + data.device_id + "_state", dataEmit);
             }
         } else {
-            dataEmit = preData;
+            console.log(index);
+            var emitData  = "";
+            emitData += "{";
+            for(var i=0; i<=index.length; i++){
+
+                if(index.charAt(i)=='*'){
+                    emitData += '"';
+                } else {
+                    emitData += index.charAt(i);
+                }
+
+            }
+            emitData += "}";
+             console.log(emitData);
+
+                try {
+                    dataJson = JSON.parse( emitData);
+                    dataEmit = dataJson;
+                    console.log('data parse');
+                    console.log(dataJson);
+                } catch(err) {
+
+                    console.log(err);
+                }
+            io.sockets.emit("device_" + data.device_id + "_state", dataEmit);
         }
-        io.sockets.emit("device_" + data.device_id + "_state", dataEmit);
     });
 }
 
