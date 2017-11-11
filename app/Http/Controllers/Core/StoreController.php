@@ -21,7 +21,7 @@ abstract class StoreController extends Controller
         try {
             $itemPerPage = $request->get('items_per_page', Store::ITEMS_PER_PAGE);
             $stores = Store::filterBy($query)
-                ->with(['partner', 'images'])->paginate($itemPerPage)->toArray();
+                ->with(['partner'])->paginate($itemPerPage)->toArray();
 
             return ManageResponse::listStoreResponse('success', $stores);
         } catch (Exception $e) {
@@ -46,6 +46,8 @@ abstract class StoreController extends Controller
                 $item['images'] = $images;
                 return $item;
             })->toArray();
+
+            $store['images'] = collect($store['images'])->pluck('src')->toArray();
 
             return ManageResponse::showStoreResponse('success', $store);
         } catch (Exception $e) {
