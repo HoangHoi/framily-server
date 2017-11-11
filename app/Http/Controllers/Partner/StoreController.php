@@ -69,10 +69,13 @@ class StoreController extends BaseController implements StoreManageContract
             return ManageResponse::cantContinue();
         }
 
+        $store = $store->load(['partner', 'vegetables.images', 'images'])->toArray();
+
+        $store['images'] = collect($store['images'])->pluck('src')->toArray();
         return ManageResponse::response(
             'success',
             trans('response.list_success', ['name' => trans('name.store')]),
-            $store->load(['vegetables.images'])->toArray()
+            $store
         );
     }
 
